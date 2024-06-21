@@ -11,31 +11,27 @@ import json
 from datasets import load_dataset
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 KEY_INDEX = 0
-KEY_POOL =  [
-   os.environ['OPENAI_API_KEY']
-]# your key pool
+KEY_POOL = [os.environ["OPENAI_API_KEY"]]  # your key pool
 openai.api_key = KEY_POOL[0]
 
 
 class TimeoutError(Exception):
     pass
 
+
 def timeout_handler(signum, frame):
     raise TimeoutError("The function takes too long to run")
 
+
 @func_set_timeout(120)
-def limited_execution_time(func,model,prompt,temp,max_tokens=2048, default=None,**kwargs):
+def limited_execution_time(func, model, prompt, temp, max_tokens=2048, default=None, **kwargs):
     try:
-        if 'gpt-3.5-turbo' in model or 'gpt-4' in model:
-            result = func(
-                    model=model,
-                    messages=prompt,
-                    temperature=temp
-                )
+        if "gpt-3.5-turbo" in model or "gpt-4" in model:
+            result = func(model=model, messages=prompt, temperature=temp)
         else:
-            result = func(model=model,prompt=prompt,max_tokens=max_tokens,**kwargs)
+            result = func(model=model, prompt=prompt, max_tokens=max_tokens, **kwargs)
     except func_timeout.exceptions.FunctionTimedOut:
         return None
     # raise any other exception
@@ -60,23 +56,23 @@ def batchify(data: Iterable[T], batch_size: int) -> Iterable[List[T]]:
         yield batch
 
 
-def openai_unit_price(model_name,token_type="prompt"):
-    if 'gpt-4' in model_name:
-        if token_type=="prompt":
+def openai_unit_price(model_name, token_type="prompt"):
+    if "gpt-4" in model_name:
+        if token_type == "prompt":
             unit = 0.03
-        elif token_type=="completion":
+        elif token_type == "completion":
             unit = 0.06
         else:
             raise ValueError("Unknown type")
-    elif 'gpt-3.5-turbo' in model_name:
+    elif "gpt-3.5-turbo" in model_name:
         unit = 0.002
-    elif 'davinci' in model_name:
+    elif "davinci" in model_name:
         unit = 0.02
-    elif 'curie' in model_name:
+    elif "curie" in model_name:
         unit = 0.002
-    elif 'babbage' in model_name:
+    elif "babbage" in model_name:
         unit = 0.0005
-    elif 'ada' in model_name:
+    elif "ada" in model_name:
         unit = 0.0004
     else:
         unit = -1
@@ -84,7 +80,7 @@ def openai_unit_price(model_name,token_type="prompt"):
 
 
 def calc_cost_w_tokens(total_tokens: int, model_name: str):
-    unit = openai_unit_price(model_name,token_type="completion")
+    unit = openai_unit_price(model_name, token_type="completion")
     return round(unit * total_tokens / 1000, 4)
 
 
@@ -96,7 +92,7 @@ def calc_cost_w_prompt(total_tokens: int, model_name: str):
 
 def get_perplexity(logprobs):
     assert len(logprobs) > 0, logprobs
-    return math.exp(-sum(logprobs)/len(logprobs))
+    return math.exp(-sum(logprobs) / len(logprobs))
 
 
 def keep_logprobs_before_eos(tokens, logprobs):
@@ -111,7 +107,7 @@ def keep_logprobs_before_eos(tokens, logprobs):
                 keep_tokens.append(tok)
                 keep_logprobs.append(lp)
         else:
-            if tok != '\n':
+            if tok != "\n":
                 start_flag = True
                 if tok != "<|endoftext>":
                     keep_tokens.append(tok)
@@ -147,8 +143,16 @@ def catch_openai_api_error(prompt_input: list):
         print("API error:", error)
 
 
-def prompt_gpt3(prompt_input: list, save_path,model_name='text-davinci-003', max_tokens=2048,
-                clean=False, batch_size=16, verbose=False, **kwargs):
+def prompt_gpt3(
+    prompt_input: list,
+    save_path,
+    model_name="text-davinci-003",
+    max_tokens=2048,
+    clean=False,
+    batch_size=16,
+    verbose=False,
+    **kwargs,
+):
     # return: output_list, money_cost
 
     def request_api(prompts: list):
@@ -158,21 +162,22 @@ def prompt_gpt3(prompt_input: list, save_path,model_name='text-davinci-003', max
         results = []
         for batch in tqdm(batchify(prompt_input, batch_size), total=len(prompt_input) // batch_size):
             batch_response = request_api(batch)
-            total_tokens += batch_response['usage']['total_tokens']
+            total_tokens += batch_response["usage"]["total_tokens"]
             if not clean:
-                results += batch_response['choices']
+                results += batch_response["choices"]
             else:
-                results += [choice['text'] for choice in batch_response['choices']]
-            with open(save_path,'w+',encoding='utf-8') as f:
+                results += [choice["text"] for choice in batch_response["choices"]]
+            with open(save_path, "w+", encoding="utf-8") as f:
                 for content in results:
-                    content = content.replace("\n"," ")
-                    f.write(content+'\n')
+                    content = content.replace("\n", " ")
+                    f.write(content + "\n")
         return results, calc_cost_w_tokens(total_tokens, model_name)
 
 
-
-def prompt_chatgpt(system_input, user_input, temperature,save_path,index,history=[], model_name='gpt-4-1106-preview'):
-    '''
+def prompt_chatgpt(
+    system_input, user_input, temperature, save_path, index, history=[], model_name="gpt-4-1106-preview"
+):
+    """
     :param system_input: "You are a helpful assistant/translator."
     :param user_input: you texts here
     :param history: ends with assistant output.
@@ -180,16 +185,15 @@ def prompt_chatgpt(system_input, user_input, temperature,save_path,index,history
                           {"role": "user": "content": xxx},
                           {"role": "assistant", "content": "xxx"}]
     return: assistant_output, (updated) history, money cost
-    '''
+    """
     if len(history) == 0:
         history = [{"role": "system", "content": system_input}]
     history.append({"role": "user", "content": user_input})
     while True:
         try:
-            completion = limited_execution_time(openai.ChatCompletion.create,
-                model=model_name,
-                prompt=history,
-                temp=temperature)
+            completion = limited_execution_time(
+                openai.ChatCompletion.create, model=model_name, prompt=history, temp=temperature
+            )
             if completion is None:
                 raise TimeoutError
             break
@@ -197,14 +201,19 @@ def prompt_chatgpt(system_input, user_input, temperature,save_path,index,history
             catch_openai_api_error(user_input)
             time.sleep(1)
 
-    assistant_output = completion['choices'][0]['message']['content']
+    assistant_output = completion["choices"][0]["message"]["content"]
     history.append({"role": "assistant", "content": assistant_output})
-    total_prompt_tokens = completion['usage']['prompt_tokens']
-    total_completion_tokens = completion['usage']['completion_tokens']
-    with open(save_path,'a+',encoding='utf-8') as f:
-        assistant_output = str(index)+"\t"+"\t".join(x for x in assistant_output.split("\n"))
-        f.write(assistant_output+'\n')
-    return assistant_output, history, calc_cost_w_tokens(total_prompt_tokens, model_name) + calc_cost_w_prompt(total_completion_tokens, model_name)
+    total_prompt_tokens = completion["usage"]["prompt_tokens"]
+    total_completion_tokens = completion["usage"]["completion_tokens"]
+    with open(save_path, "a+", encoding="utf-8") as f:
+        assistant_output = str(index) + "\t" + "\t".join(x for x in assistant_output.split("\n"))
+        f.write(assistant_output + "\n")
+    return (
+        assistant_output,
+        history,
+        calc_cost_w_tokens(total_prompt_tokens, model_name) + calc_cost_w_prompt(total_completion_tokens, model_name),
+    )
+
 
 def build_query_generation_prompt(data):
     prompt_list = []
@@ -228,12 +237,20 @@ I'm looking for a week-long travel itinerary for 2 individuals. Our journey star
 
 JSON\n"""
     for unit in data:
-        unit = str(unit).replace(", 'level': 'easy'",'').replace(", 'level': 'medium'",'').replace(", 'level': 'hard'",'')
+        unit = (
+            str(unit)
+            .replace(", 'level': 'easy'", "")
+            .replace(", 'level': 'medium'", "")
+            .replace(", 'level': 'hard'", "")
+        )
         prompt = prefix + str(unit) + "\nQUERY\n"
         prompt_list.append(prompt)
     return prompt_list
 
-def build_plan_format_conversion_prompt(directory, set_type='validation',model_name='gpt4',strategy='direct',mode='two-stage'):
+
+def build_plan_format_conversion_prompt(
+    directory, set_type="validation", model_name="gpt4", strategy="direct", mode="two-stage"
+):
     prompt_list = []
     prefix = """Please assist me in extracting valid information from a given natural language text and reconstructing it in JSON format, as demonstrated in the following example. If transportation details indicate a journey from one city to another (e.g., from A to B), the 'current_city' should be updated to the destination city (in this case, B). Use a ';' to separate different attractions, with each attraction formatted as 'Name, City'. If there's information about transportation, ensure that the 'current_city' aligns with the destination mentioned in the transportation details (i.e., the current city should follow the format 'from A to B'). Also, ensure that all flight numbers and costs are followed by a colon (i.e., 'Flight Number:' and 'Cost:'), consistent with the provided example. Each item should include ['day', 'current_city', 'transportation', 'breakfast', 'attraction', 'lunch', 'dinner', 'accommodation']. Replace non-specific information like 'eat at home/on the road' with '-'. Additionally, delete any '$' symbols.
 -----EXAMPLE-----
@@ -269,22 +286,25 @@ def build_plan_format_conversion_prompt(directory, set_type='validation',model_n
     }}]
 -----EXAMPLE END-----
 """
-    if set_type == 'train':
-        query_data_list  = load_dataset('osunlp/TravelPlanner','train')['train']
-    elif set_type == 'validation':
-        query_data_list  = load_dataset('osunlp/TravelPlanner','validation')['validation']
-    elif set_type == 'test':
-        query_data_list  = load_dataset('osunlp/TravelPlanner','test')['test']
+    if set_type == "train":
+        query_data_list = load_dataset("osunlp/TravelPlanner", "train")["train"]
+    elif set_type == "validation":
+        query_data_list = load_dataset("osunlp/TravelPlanner", "validation")["validation"]
+    elif set_type == "test":
+        query_data_list = load_dataset("osunlp/TravelPlanner", "test")["test"]
 
-    idx_number_list = [i for i in range(1,len(query_data_list)+1)]
-    if mode == 'two-stage':
-        suffix = ''
-    elif mode == 'sole-planning':
-        suffix = f'_{strategy}'
+    idx_number_list = [i for i in range(1, len(query_data_list) + 1)]
+    if mode == "two-stage":
+        suffix = ""
+    elif mode == "sole-planning":
+        suffix = f"_{strategy}"
     for idx in tqdm(idx_number_list):
-        generated_plan = json.load(open(f'{directory}/{set_type}/generated_plan_{idx}.json'))
-        if generated_plan[-1][f'{model_name}{suffix}_{mode}_results'] and generated_plan[-1][f'{model_name}{suffix}_{mode}_results'] != "":
-            prompt = prefix + "Text:\n"+generated_plan[-1][f'{model_name}{suffix}_{mode}_results']+"\nJSON:\n"
+        generated_plan = json.load(open(f"{directory}/{set_type}/generated_plan_{idx}.json"))
+        if (
+            generated_plan[-1][f"{model_name}{suffix}_{mode}_results"]
+            and generated_plan[-1][f"{model_name}{suffix}_{mode}_results"] != ""
+        ):
+            prompt = prefix + "Text:\n" + generated_plan[-1][f"{model_name}{suffix}_{mode}_results"] + "\nJSON:\n"
         else:
             prompt = ""
         prompt_list.append(prompt)

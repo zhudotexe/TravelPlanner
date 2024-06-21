@@ -1,7 +1,7 @@
-from pandas import DataFrame
+
 
 class Cities:
-    def __init__(self ,path="../database/background/citySet_with_states.txt") -> None:
+    def __init__(self, path="../database/background/citySet_with_states.txt") -> None:
         self.path = path
         self.load_data()
         print("Cities loaded.")
@@ -15,7 +15,7 @@ class Cities:
                 self.data[state] = [city]
             else:
                 self.data[state].append(city)
-    
+
     def run(self, state) -> dict:
         if state not in self.data:
             return ValueError("Invalid State")
