@@ -1,4 +1,5 @@
-from utils.func import get_valid_name_city,extract_before_parenthesis,extract_numbers_from_filenames
+from utils.func import extract_flight_number, get_valid_name_city, extract_before_parenthesis, \
+    extract_numbers_from_filenames
 from tools.flights.apis import Flights
 from tools.accommodations.apis import Accommodations
 from tools.restaurants.apis import Restaurants
@@ -335,9 +336,10 @@ def is_valid_information_in_sandbox(question, tested_data):
                     org_city = extract_before_parenthesis(org_city)
                     dest_city = extract_before_parenthesis(dest_city)
                 except TypeError:
-                    raise ValueError("The transportation {} in day {} can not be parsed.".format(value,i+1))
-                # print(value)
-                if len(flight.data[(flight.data['Flight Number'] == value.split('Flight Number: ')[1].split(',')[0]) & (flight.data['OriginCityName']==org_city) & (flight.data['DestCityName']==dest_city)]) < 1:
+                    # raise ValueError("The transportation {} in day {} can not be parsed.".format(value,i+1))
+                    pass
+                flight_number = extract_flight_number(value)
+                if len(flight.data[(flight.data['Flight Number'] == flight_number) & (flight.data['OriginCityName']==org_city) & (flight.data['DestCityName']==dest_city)]) < 1:
                      return False, f"The flight number in day {i+1} is invalid in the sandbox."
             
             elif 'self-driving' in value.lower() or 'taxi' in value.lower():

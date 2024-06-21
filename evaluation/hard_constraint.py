@@ -1,4 +1,5 @@
-from utils.func import get_valid_name_city,extract_before_parenthesis,extract_numbers_from_filenames
+from utils.func import extract_flight_number, get_valid_name_city, extract_before_parenthesis, \
+    extract_numbers_from_filenames
 from tools.flights.apis import Flights
 from tools.accommodations.apis import Accommodations
 from tools.restaurants.apis import Restaurants
@@ -83,7 +84,8 @@ def get_total_cost(question, tested_data):
                 pass
             else:
                 if 'flight number' in value.lower():
-                    res = flight.data[flight.data['Flight Number'] == value.split('Flight Number: ')[1].split(',')[0]]
+                    flight_number = extract_flight_number(value)
+                    res = flight.data[flight.data['Flight Number'] == flight_number]
                     if len(res) > 0:
                         total_cost += res['Price'].values[0] * question['people_number']
                 

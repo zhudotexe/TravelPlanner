@@ -191,3 +191,10 @@ def count_consecutive_values(lst):
 
     result.append((current_string, count))  # Add the last group of values
     return result
+
+
+def extract_flight_number(value):
+    match = re.search(r"Flight Number:?\s*(F\d+)", value, re.IGNORECASE)
+    if match:
+        return match[1]
+    return None

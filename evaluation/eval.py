@@ -1,4 +1,6 @@
 import os, sys
+import pprint
+
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), "..")))
 from commonsense_constraint import evaluation as commonsense_eval
 from hard_constraint import evaluation as hard_eval
@@ -25,7 +27,7 @@ def count_true_false(data):
 def statistics(commonsense_statistic):
     """Generate statistics for each level and day in the given data with a different structure."""
     result = {level: {day: {} for day in commonsense_statistic[level]} for level in commonsense_statistic}
-    
+
     for level, days in commonsense_statistic.items():
         for day, dicts in days.items():
             for dct in dicts:
@@ -36,13 +38,13 @@ def statistics(commonsense_statistic):
                             result[level][day][key] = {"true": 0, "false": 0}
                         result[level][day][key]["true"] += true_count
                         result[level][day][key]["false"] += false_count
-                
+
     return result
 
 def paper_term_mapping(commonsense_constraint_record, hard_constraint_record):
     mapping_dict = {'is_valid_information_in_current_city':'Within Current City','is_valid_information_in_sandbox':'Within Sandbox','is_reasonalbe_visiting_city':'Reasonable City Route','is_valid_restaurants':'Diverse Restaurants','is_valid_transportation':'Non-conf. Transportation','is_valid_attractions':'Diverse Attractions','is_valid_accommodation':'Minimum Nights Stay','is_not_absent':'Complete Information','valid_cost':'Budget','valid_room_rule':'Room Rule','valid_cuisine':'Cuisine','valid_room_type':'Room Type','valid_transportation':'Transportation'}
-    remap_commonsense_constraint_record = {level:{day:{} for day in [3,5,7]} for level in ['easy','medium','hard']} 
-    remap_hard_constraint_record = {level:{day:{} for day in [3,5,7]} for level in ['easy','medium','hard']} 
+    remap_commonsense_constraint_record = {level:{day:{} for day in [3,5,7]} for level in ['easy','medium','hard']}
+    remap_hard_constraint_record = {level:{day:{} for day in [3,5,7]} for level in ['easy','medium','hard']}
     for level in commonsense_constraint_record:
         for day in commonsense_constraint_record[level]:
             remap_commonsense_constraint_record[level][day] = {mapping_dict[key] : val for key,val in commonsense_constraint_record[level][day].items()}
@@ -57,10 +59,10 @@ def eval_score(set_type: str, file_path: str):
     elif set_type == 'validation':
         query_data_list  = load_dataset('osunlp/TravelPlanner','validation',download_mode="force_redownload")['validation']
 
-    
+
     query_data_list = [x for x in query_data_list]
-    hardConstraint_statistic= {level:{day:[] for day in [3,5,7]} for level in ['easy','medium','hard']} 
-    commonsenseConstraint_statistic = {level:{day:[] for day in [3,5,7]} for level in ['easy','medium','hard']} 
+    hardConstraint_statistic= {level:{day:[] for day in [3,5,7]} for level in ['easy','medium','hard']}
+    commonsenseConstraint_statistic = {level:{day:[] for day in [3,5,7]} for level in ['easy','medium','hard']}
     tested_plans = load_line_json_data(file_path)
     delivery_cnt = 0
     plan_constraint_store = []
@@ -101,7 +103,7 @@ def eval_score(set_type: str, file_path: str):
             if unit['local_constraint'][key] != None:
                 constraint_record[unit['level']][unit['days']][key] += 1
                 mapping_constraint_record[unit['level']][unit['days']][constraint_mapping[key]] += 1
-    
+
     commonsenseConstraint_statistic_processed = statistics(commonsenseConstraint_statistic)
     hardConstraint_statistic_processed = statistics(hardConstraint_statistic)
 
@@ -118,7 +120,7 @@ def eval_score(set_type: str, file_path: str):
             constraint_statistic = hardConstraint_statistic_processed
 
         key_dict = {'commonsense':['is_valid_information_in_current_city','is_valid_information_in_sandbox','is_reasonalbe_visiting_city','is_valid_restaurants','is_valid_transportation','is_valid_attractions','is_valid_accommodation','is_not_absent'],'hard':['valid_cost','valid_room_rule','valid_cuisine','valid_room_type','valid_transportation']}
-        
+
         for key in constraint_statistic:
             for key2 in constraint_statistic[key]:
                 if key2 == -1:
@@ -166,7 +168,7 @@ def eval_score(set_type: str, file_path: str):
                 if plan_constraint_store[idx]['hard_constraint'][item][0] is not None and  plan_constraint_store[idx]['hard_constraint'][item][0] == False:
                     final_hardConstraint_pass = False
                     break
-                
+
             if final_commonsense_pass:
                 final_commonsense_cnt += 1
             if final_hardConstraint_pass:
@@ -202,7 +204,7 @@ def eval_score(set_type: str, file_path: str):
         result['Hard Constraint Micro Pass Rate'] = constraint_dis_record['hard']['pass'] / 2290
         result['Hard Constraint Macro Pass Rate'] = final_hardConstraint_cnt / 1000
         result['Final Pass Rate'] = final_all_cnt / 1000
-    
+
 
     return result, {"Commonsense Constraint":remap_commonsense_constraint_record, "Hard Constraint":remap_hard_constraint_record}
 
@@ -217,7 +219,7 @@ if __name__ == '__main__':
 
     for key in scores:
         print(f"{key}: {scores[key]*100}%")
-    
+
     print("------------------")
-    print(detailed_scores)
+    pprint.pprint(detailed_scores)
     print("------------------")
