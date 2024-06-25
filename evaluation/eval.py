@@ -77,7 +77,6 @@ def paper_term_mapping(commonsense_constraint_record, hard_constraint_record):
 
 
 def eval_score(set_type: str, file_path: str):
-
     if set_type == "train":
         query_data_list = load_dataset("osunlp/TravelPlanner", "train", download_mode="force_redownload")["train"]
     elif set_type == "validation":
@@ -155,10 +154,10 @@ def eval_score(set_type: str, file_path: str):
     constraint_dis_record = {"commonsense": {"pass": 0, "total": 0}, "hard": {"pass": 0, "total": 0}}
     constraint_count = {key: {day: {} for day in [3, 5, 7]} for key in ["easy", "medium", "hard"]}
 
-    for constraint in ["commonsense", "hard"]:
-        if constraint == "commonsense":
+    for constraint_type in ["commonsense", "hard"]:
+        if constraint_type == "commonsense":
             constraint_statistic = commonsenseConstraint_statistic_processed
-        elif constraint == "hard":
+        elif constraint_type == "hard":
             constraint_statistic = hardConstraint_statistic_processed
 
         key_dict = {
@@ -172,59 +171,75 @@ def eval_score(set_type: str, file_path: str):
                 "is_valid_accommodation",
                 "is_not_absent",
             ],
-            "hard": ["valid_cost", "valid_room_rule", "valid_cuisine", "valid_room_type", "valid_transportation"],
+            "hard": [
+                "valid_cost",
+                "valid_room_rule",
+                "valid_cuisine",
+                "valid_room_type",
+                "valid_transportation",
+            ],
         }
 
-        for key in constraint_statistic:
-            for key2 in constraint_statistic[key]:
-                if key2 == -1:
-                    print(constraint_statistic[key])
+        for difficulty in constraint_statistic:
+            for n_days in constraint_statistic[difficulty]:
+                if n_days == -1:
+                    print(constraint_statistic[difficulty])
                     exit(0)
-                for key3 in key_dict[constraint]:
-                    data_record[key][key2].append("0/0")
-                    if key3 in constraint_statistic[key][key2]:
-                        constraint_dis_record[constraint]["pass"] += constraint_statistic[key][key2][key3]["true"]
-                        if constraint == "hard":
-                            if key == "hard" and key3 in [
+                for metric in key_dict[constraint_type]:
+                    data_record[difficulty][n_days].append("0/0")
+                    if metric in constraint_statistic[difficulty][n_days]:
+                        constraint_dis_record[constraint_type]["pass"] += constraint_statistic[difficulty][n_days][
+                            metric
+                        ]["true"]
+                        if constraint_type == "hard":
+                            if difficulty == "hard" and metric in [
                                 "valid_room_rule",
                                 "valid_cuisine",
                                 "valid_room_type",
                                 "valid_transportation",
                             ]:
-                                data_record[key][key2][
+                                data_record[difficulty][n_days][
                                     -1
-                                ] = f"{constraint_statistic[key][key2][key3]['true']}/{mapping_constraint_record[key][key2][key3]}"
-                                constraint_dis_record[constraint]["total"] += mapping_constraint_record[key][key2][key3]
-                                hardConstraint_statistic_processed[key][key2][key3]["total"] = (
-                                    mapping_constraint_record[key][key2][key3]
+                                ] = f"{constraint_statistic[difficulty][n_days][metric]['true']}/{mapping_constraint_record[difficulty][n_days][metric]}"
+                                constraint_dis_record[constraint_type]["total"] += mapping_constraint_record[
+                                    difficulty
+                                ][n_days][metric]
+                                hardConstraint_statistic_processed[difficulty][n_days][metric]["total"] = (
+                                    mapping_constraint_record[difficulty][n_days][metric]
                                 )
-                            elif key == "medium" and key3 in ["valid_room_rule", "valid_cuisine", "valid_room_type"]:
-                                data_record[key][key2][
+                            elif difficulty == "medium" and metric in [
+                                "valid_room_rule",
+                                "valid_cuisine",
+                                "valid_room_type",
+                            ]:
+                                data_record[difficulty][n_days][
                                     -1
-                                ] = f"{constraint_statistic[key][key2][key3]['true']}/{mapping_constraint_record[key][key2][key3]}"
-                                constraint_dis_record[constraint]["total"] += mapping_constraint_record[key][key2][key3]
-                                hardConstraint_statistic_processed[key][key2][key3]["total"] = (
-                                    mapping_constraint_record[key][key2][key3]
+                                ] = f"{constraint_statistic[difficulty][n_days][metric]['true']}/{mapping_constraint_record[difficulty][n_days][metric]}"
+                                constraint_dis_record[constraint_type]["total"] += mapping_constraint_record[
+                                    difficulty
+                                ][n_days][metric]
+                                hardConstraint_statistic_processed[difficulty][n_days][metric]["total"] = (
+                                    mapping_constraint_record[difficulty][n_days][metric]
                                 )
                             else:
-                                data_record[key][key2][
+                                data_record[difficulty][n_days][
                                     -1
-                                ] = f"{constraint_statistic[key][key2][key3]['true']}/{count_record[key][key2]}"
-                                if key3 in ["valid_cost", "valid_visitng_city_number", "valid_days"]:
-                                    constraint_dis_record[constraint]["total"] += count_record[key][key2]
-                                    constraint_count[key][key2][key3] = count_record[key][key2]
-                                    hardConstraint_statistic_processed[key][key2][key3]["total"] = count_record[key][
-                                        key2
-                                    ]
+                                ] = f"{constraint_statistic[difficulty][n_days][metric]['true']}/{count_record[difficulty][n_days]}"
+                                if metric in ["valid_cost", "valid_visitng_city_number", "valid_days"]:
+                                    constraint_dis_record[constraint_type]["total"] += count_record[difficulty][n_days]
+                                    constraint_count[difficulty][n_days][metric] = count_record[difficulty][n_days]
+                                    hardConstraint_statistic_processed[difficulty][n_days][metric]["total"] = (
+                                        count_record[difficulty][n_days]
+                                    )
                         else:
-                            data_record[key][key2][
+                            data_record[difficulty][n_days][
                                 -1
-                            ] = f"{constraint_statistic[key][key2][key3]['true']}/{count_record[key][key2]}"
-                            constraint_dis_record[constraint]["total"] += count_record[key][key2]
-                            constraint_count[key][key2][key3] = count_record[key][key2]
-                            commonsenseConstraint_statistic_processed[key][key2][key3]["total"] = count_record[key][
-                                key2
-                            ]
+                            ] = f"{constraint_statistic[difficulty][n_days][metric]['true']}/{count_record[difficulty][n_days]}"
+                            constraint_dis_record[constraint_type]["total"] += count_record[difficulty][n_days]
+                            constraint_count[difficulty][n_days][metric] = count_record[difficulty][n_days]
+                            commonsenseConstraint_statistic_processed[difficulty][n_days][metric]["total"] = (
+                                count_record[difficulty][n_days]
+                            )
     final_all_cnt = 0
     final_commonsense_cnt = 0
     final_hardConstraint_cnt = 0
@@ -303,7 +318,7 @@ if __name__ == "__main__":
     scores, detailed_scores = eval_score(args.set_type, file_path=args.evaluation_file_path)
 
     for key in scores:
-        print(f"{key}: {scores[key]*100}%")
+        print(f"{key}: {scores[key] * 100}%")
 
     print("------------------")
     pprint.pprint(detailed_scores)
