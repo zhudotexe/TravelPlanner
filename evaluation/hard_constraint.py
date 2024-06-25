@@ -91,7 +91,10 @@ def get_total_cost(question, tested_data):
                     if "self-driving" in value.lower():
                         # print(org_city,dest_city)
                         cost = googleDistanceMatrix.run_for_evaluation(org_city, dest_city, "self-driving")["cost"]
-                        total_cost += cost * math.ceil(question["people_number"] * 1.0 / 5)
+                        if cost is not None:
+                            total_cost += cost * math.ceil(question["people_number"] * 1.0 / 5)
+                        else:
+                            print(f"Unable to find cost of driving {org_city} to {dest_city}")
                     else:
                         cost = googleDistanceMatrix.run_for_evaluation(org_city, dest_city, "taxi")["cost"]
                         total_cost += cost * math.ceil(question["people_number"] * 1.0 / 4)

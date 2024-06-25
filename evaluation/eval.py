@@ -106,11 +106,17 @@ def eval_score(set_type: str, file_path: str):
         else:
             commonsense_info_box = None
 
-        if (
-            commonsense_info_box
-            and commonsense_info_box["is_not_absent"][0]
-            and commonsense_info_box["is_valid_information_in_sandbox"][0]
-        ):
+        # HACK(zhu): in the original eval, this code makes it so if your model hallucinates at all it gives you a 0 on
+        # the entire 2nd half of the eval blindly, which is not useful
+        # I commented it out and fixed some errors that arise wrt hallucinations, but it was causing errors if the
+        # model said commonsense things like "eat on the road" or "local restaurant"
+        #
+        # if (
+        #     commonsense_info_box
+        #     and commonsense_info_box["is_not_absent"][0]
+        #     and commonsense_info_box["is_valid_information_in_sandbox"][0]
+        # ):
+        if commonsense_info_box:
             hard_info_box = hard_eval(query_data, tested_plan["plan"])
         else:
             hard_info_box = None

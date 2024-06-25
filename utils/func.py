@@ -207,7 +207,7 @@ def get_filtered_data(component, data, column_name=("NAME", "city")):
 
 def extract_before_parenthesis(s):
     match = re.search(r"^(.*?)\([^)]*\)", s)
-    return match.group(1) if match else s
+    return (match.group(1) if match else s).strip()
 
 
 def count_consecutive_values(lst):
